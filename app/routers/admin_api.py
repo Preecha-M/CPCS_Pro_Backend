@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from ..core.auth import get_current_user_from_cookie
 from ..core.mongo import col_predictions, DESCENDING
 from ..services.weather import fetch_api_data, weather_condition_label
+from ..core.disease_colors import disease_color_map
 
 router = APIRouter()
 
@@ -146,6 +147,23 @@ async def admin_dashboard_json(request: Request):
 
     summary = {"total_users": total_users, "most_common_location": most_common_location, "disease_summary": disease_counts_dict}
 
+    all_diseases = set()
+
+    for k in (disease_counts_dict or {}).keys():
+        all_diseases.add(k or "Unknown")
+
+    for ds in (time_series_datasets or []):
+        all_diseases.add(ds.get("label") or "Unknown")
+
+    for ds in (grouped_datasets or []):
+        all_diseases.add(ds.get("label") or "Unknown")
+    for p in (bubble_points or []):
+        all_diseases.add(p.get("disease") or "Unknown")
+
+    for r in (records or []):
+        all_diseases.add(r.get("disease") or "Unknown")
+    disease_colors = disease_color_map(sorted(all_diseases))
+    
     return {
         "selected_date": selected_date,
         "selected_lat": selected_lat,
@@ -164,5 +182,7 @@ async def admin_dashboard_json(request: Request):
         "records": records,
         "page": page,
         "total_pages": total_pages,
-        "weather_list": weather_list
+        "weather_list": weather_list,
+        "disease_colors": disease_colors,
+
     }
