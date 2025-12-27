@@ -13,6 +13,8 @@ from .routers.admin_dashboard import router as admin_router
 from .routers.admin_api import router as admin_api_router
 from .routers.auth_api import router as auth_api_router
 from . import line_handlers 
+from app.routers import auth_api
+
 
 app = FastAPI()
 
