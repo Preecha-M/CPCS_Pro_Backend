@@ -8,6 +8,8 @@ from ..core.disease_colors import disease_color_map
 
 router = APIRouter()
 
+CONFIDENCE_THRESHOLD = 0.45  # แสดงผลเฉพาะรายการที่ confidence >= 0.45
+
 def _build_weather_list(api_data):
     try:
         data = api_data.get("WeatherForecasts", {}).get("forecasts", [])
@@ -47,8 +49,7 @@ async def admin_dashboard_json(request: Request):
     api_data = await fetch_api_data(selected_date, selected_lat, selected_lon)
     weather_list = _build_weather_list(api_data) if isinstance(api_data, dict) and "error" not in api_data else []
 
-    cursor = col_predictions.find(
-        {},
+    cursor = col_predictions.find({"confidence": {"$gte": CONFIDENCE_THRESHOLD}},
         {
             "_id": 0,
             "user_id": 1,
@@ -66,10 +67,11 @@ async def admin_dashboard_json(request: Request):
 
     records = list(cursor)
 
-    total_records = col_predictions.count_documents({})
+    total_records = col_predictions.count_documents({"confidence": {"$gte": CONFIDENCE_THRESHOLD}})
     total_pages = (total_records + per_page - 1) // per_page
 
     pipeline_disease = [
+        {"$match": {"confidence": {"$gte": CONFIDENCE_THRESHOLD}, "disease": {"$exists": True, "$ne": None}}},
         {"$group": {"_id": "$disease", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
     ]
@@ -77,7 +79,7 @@ async def admin_dashboard_json(request: Request):
     disease_counts_dict = {(x["_id"] or "Unknown"): x["count"] for x in disease_counts_list}
 
     pipeline_timeseries = [
-        {"$match": {"date": {"$exists": True, "$ne": None}, "disease": {"$exists": True, "$ne": None}}},
+        {"$match": {"date": {"$exists": True, "$ne": None}, "disease": {"$exists": True, "$ne": None}, "confidence": {"$gte": CONFIDENCE_THRESHOLD}}},
         {"$group": {"_id": {"date": "$date", "disease": "$disease"}, "count": {"$sum": 1}}},
         {"$sort": {"_id.date": 1}},
     ]
@@ -94,14 +96,20 @@ async def admin_dashboard_json(request: Request):
     time_series_datasets = [{"label": dz, "data": [ts_map.get((d, dz), 0) for d in sorted_dates]} for dz in sorted_diseases]
 
     heat_points = []
-    for d in col_predictions.find({"latitude": {"$ne": None}, "longitude": {"$ne": None}}, {"_id": 0, "latitude": 1, "longitude": 1}):
+    # รวมจุดพิกัดให้เป็นกลุ่ม (ปัดทศนิยม) เพื่อให้ heatmap แสดงความหนาแน่นได้ถูกต้อง
+    pipeline_heat = [
+        {"$match": {"confidence": {"$gte": CONFIDENCE_THRESHOLD}, "latitude": {"$ne": None}, "longitude": {"$ne": None}}},
+        {"$project": {"lat": {"$round": ["$latitude", 4]}, "lon": {"$round": ["$longitude", 4]}}},
+        {"$group": {"_id": {"lat": "$lat", "lon": "$lon"}, "count": {"$sum": 1}}},
+    ]
+    for r in col_predictions.aggregate(pipeline_heat):
         try:
-            heat_points.append([float(d["latitude"]), float(d["longitude"]), 1])
+            heat_points.append([float(r["_id"]["lat"]), float(r["_id"]["lon"]), float(r["count"])])
         except Exception:
             pass
 
     pipeline_grouped = [
-        {"$match": {"address": {"$exists": True}, "disease": {"$exists": True}}},
+        {"$match": {"address": {"$exists": True}, "disease": {"$exists": True}, "confidence": {"$gte": CONFIDENCE_THRESHOLD}}},
         {"$group": {"_id": {"address": "$address", "disease": "$disease"}, "count": {"$sum": 1}}},
         {"$sort": {"_id.address": 1}},
     ]
@@ -117,7 +125,7 @@ async def admin_dashboard_json(request: Request):
     grouped_datasets = [{"label": dz, "data": [gb_map.get((addr, dz), 0) for addr in grouped_locations]} for dz in sorted(diseases2_set)]
 
     pipeline_bubble = [
-        {"$match": {"latitude": {"$ne": None}, "longitude": {"$ne": None}, "disease": {"$ne": None}}},
+        {"$match": {"latitude": {"$ne": None}, "longitude": {"$ne": None}, "disease": {"$ne": None}, "confidence": {"$gte": CONFIDENCE_THRESHOLD}}},
         {"$project": {"lat": {"$round": ["$latitude", 5]}, "lon": {"$round": ["$longitude", 5]}, "disease": 1}},
         {"$group": {"_id": {"lat": "$lat", "lon": "$lon", "disease": "$disease"}, "count": {"$sum": 1}}},
     ]
@@ -125,7 +133,7 @@ async def admin_dashboard_json(request: Request):
     bubble_points = [{"lat": float(r["_id"]["lat"]), "lon": float(r["_id"]["lon"]), "count": int(r["count"]), "disease": r["_id"]["disease"]} for r in bubble_rows]
 
     confidence_values = []
-    for x in col_predictions.find({"confidence": {"$ne": None}}, {"_id": 0, "confidence": 1}):
+    for x in col_predictions.find({"confidence": {"$gte": CONFIDENCE_THRESHOLD}}, {"_id": 0, "confidence": 1}):
         try:
             confidence_values.append(float(x["confidence"]))
         except Exception:
@@ -134,6 +142,7 @@ async def admin_dashboard_json(request: Request):
     loc_top = list(
         col_predictions.aggregate(
             [
+                {"$match": {"confidence": {"$gte": CONFIDENCE_THRESHOLD}}},
                 {"$group": {"_id": "$address", "total": {"$sum": 1}}},
                 {"$sort": {"total": -1}},
                 {"$limit": 1},
