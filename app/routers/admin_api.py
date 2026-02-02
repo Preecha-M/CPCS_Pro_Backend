@@ -51,7 +51,7 @@ async def admin_dashboard_json(request: Request):
 
     cursor = col_predictions.find({"confidence": {"$gte": CONFIDENCE_THRESHOLD}},
         {
-            "_id": 0,
+            "_id": 1,
             "user_id": 1,
             "display_name": 1,
             "image_url": 1,
@@ -66,6 +66,10 @@ async def admin_dashboard_json(request: Request):
     ).sort("timestamp", DESCENDING).skip(skip).limit(per_page)
 
     records = list(cursor)
+    # Convert ObjectId to string for JSON serialization
+    for record in records:
+        if "_id" in record:
+            record["_id"] = str(record["_id"])
 
     total_records = col_predictions.count_documents({"confidence": {"$gte": CONFIDENCE_THRESHOLD}})
     total_pages = (total_records + per_page - 1) // per_page
@@ -195,3 +199,18 @@ async def admin_dashboard_json(request: Request):
         "disease_colors": disease_colors,
 
     }
+
+@router.delete("/admin/history/{record_id}")
+async def delete_history_record(record_id: str, request: Request):
+    payload = get_current_user_from_cookie(request)
+    if payload.get("role") != "admin":
+        return JSONResponse({"detail": "Admin only"}, status_code=403)
+
+    try:
+        from bson import ObjectId
+        res = col_predictions.delete_one({"_id": ObjectId(record_id)})
+        if res.deleted_count == 0:
+            return JSONResponse({"detail": "Record not found"}, status_code=404)
+        return {"ok": True}
+    except Exception as e:
+        return JSONResponse({"detail": str(e)}, status_code=400)

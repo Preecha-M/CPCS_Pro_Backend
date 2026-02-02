@@ -12,8 +12,12 @@ from .routers.line_callback import router as line_router
 from .routers.admin_dashboard import router as admin_router
 from .routers.admin_api import router as admin_api_router
 from .routers.auth_api import router as auth_api_router
+from .routers.admin_history_detail import router as admin_history_router
+from .routers.dev_dashboard import router as dev_dashboard_router
 from . import line_handlers 
 from app.routers import auth_api
+from .routers import wind_api
+
 
 
 app = FastAPI()
@@ -40,6 +44,9 @@ app.include_router(line_router)
 app.include_router(admin_router)
 app.include_router(admin_api_router, prefix="/api")
 app.include_router(auth_api_router, prefix="/api")
+app.include_router(admin_history_router, prefix="/api")
+app.include_router(dev_dashboard_router, prefix="/api")
+app.include_router(wind_api.router)
 
 
 if __name__ == "__main__":

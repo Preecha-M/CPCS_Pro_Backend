@@ -18,3 +18,8 @@ HF_SPACE = os.getenv("HF_SPACE", "Teayear/RiceCare-densenet121-model")
 CLIP_THRESHOLD = float(os.getenv("CLIP_THRESHOLD", "0.55"))
 
 EXPIRY_MINUTES = int(os.getenv("EXPIRY_MINUTES", "10"))
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL_PRIMARY = os.getenv("GEMINI_MODEL_PRIMARY", "gemini-3-flash-preview")
+GEMINI_MODEL_FALLBACK = os.getenv("GEMINI_MODEL_FALLBACK", "gemini-2.5-flash")
+
