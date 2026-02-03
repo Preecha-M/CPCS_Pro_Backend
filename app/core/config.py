@@ -14,8 +14,8 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 
-HF_SPACE = os.getenv("HF_SPACE", "Teayear/RiceCare-densenet121-model")
-CLIP_THRESHOLD = float(os.getenv("CLIP_THRESHOLD", "0.55"))
+HF_SPACE = os.getenv("HF_SPACE", "Teayear/Rice_EfficientNetB1")
+CLIP_THRESHOLD = float(os.getenv("CLIP_THRESHOLD", "0.45"))
 
 EXPIRY_MINUTES = int(os.getenv("EXPIRY_MINUTES", "10"))
 

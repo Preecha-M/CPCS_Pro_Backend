@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 from ..core.auth import get_current_user_from_cookie
@@ -12,6 +12,7 @@ router = APIRouter()
 
 class ModelUpdate(BaseModel):
     model_name: str
+    model_config = ConfigDict(protected_namespaces=())
 
 @router.get("/dev/status")
 async def get_dev_status(request: Request):
