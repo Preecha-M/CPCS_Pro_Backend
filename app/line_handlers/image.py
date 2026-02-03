@@ -24,8 +24,8 @@ def handle_image(event):
     try:
         # Space รับ 2 input: image + clip_threshold
         result = gr_client.predict(
-            image=handle_file(tmp_pred_path),
-            clip_threshold=float(config.CLIP_THRESHOLD),
+            handle_file(tmp_pred_path),
+            float(config.CLIP_THRESHOLD),
             api_name="/predict",
         )
     except Exception as e:
