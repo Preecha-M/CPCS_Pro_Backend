@@ -10,7 +10,8 @@ def parse_prediction(pred_text: str):
     disease = None
     disease = None
     # Use generic search instead of first line dependent
-    m = re.search(r"ผลการทำนาย:\s*([^\n]+)", pred_text)
+    # Support both "ผลการทำนาย" and "ผลการวินิจฉัย"
+    m = re.search(r"(?:ผลการทำนาย|ผลการวินิจฉัย):\s*([^\n]+)", pred_text)
     if m:
         disease = m.group(1).strip()
 
