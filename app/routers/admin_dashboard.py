@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 
 from ..core.templates import templates
 from ..core.mongo import col_predictions, DESCENDING
-from ..services.weather import fetch_api_data, weather_condition_label
+
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ async def admin_dashboard(request: Request):
     skip = (page - 1) * per_page
     max_date = (datetime.now() + timedelta(days=126)).strftime("%Y-%m-%d")
 
-    api_data = await fetch_api_data(selected_date, selected_lat, selected_lon)
+
 
     cursor = col_predictions.find(
         {},
@@ -141,11 +141,11 @@ async def admin_dashboard(request: Request):
             "grouped_datasets": grouped_datasets,
             "bubble_points": bubble_points,
             "confidence_values": confidence_values,
-            "api_data": api_data,
+
             "selected_date": selected_date,
             "selected_lat": selected_lat,
             "selected_lon": selected_lon,
             "max_date": max_date,
-            "weather_condition_label": weather_condition_label,
+
         },
     )

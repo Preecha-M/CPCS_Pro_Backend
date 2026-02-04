@@ -8,8 +8,9 @@ def parse_prediction(pred_text: str):
         return None, None
 
     disease = None
-    first_line = pred_text.split("\n", 1)[0]
-    m = re.search(r"ผลการทำนาย:\s*(.+)$", first_line)
+    disease = None
+    # Use generic search instead of first line dependent
+    m = re.search(r"ผลการทำนาย:\s*([^\n]+)", pred_text)
     if m:
         disease = m.group(1).strip()
 
