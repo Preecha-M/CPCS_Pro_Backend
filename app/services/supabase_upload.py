@@ -2,10 +2,8 @@ from . import _mime
 from ..core.supabase_clients import supabase_admin
 from ..core import config
 
-def supabase_upload_bytes_and_get_url(data: bytes, user_id: str, message_id: str) -> str:
-    content_type, ext = _mime._guess_mime_ext(data)
-    key = f"line-images/{user_id}/{message_id}{ext}"
 
+def _upload_key_get_url(key: str, data: bytes, content_type: str) -> str:
     supabase_admin.storage.from_(config.SUPABASE_BUCKET).upload(
         path=key,
         file=data,
@@ -23,3 +21,15 @@ def supabase_upload_bytes_and_get_url(data: bytes, user_id: str, message_id: str
     if isinstance(signed, dict):
         return signed.get("signedURL") or signed.get("signed_url")
     return signed
+
+
+def supabase_upload_bytes_and_get_url(data: bytes, user_id: str, message_id: str) -> str:
+    content_type, ext = _mime._guess_mime_ext(data)
+    key = f"line-images/{user_id}/{message_id}{ext}"
+    return _upload_key_get_url(key, data, content_type)
+
+
+def supabase_upload_rejected_rice_image(data: bytes, user_id: str, message_id: str) -> str:
+    content_type, ext = _mime._guess_mime_ext(data)
+    key = f"rejected-rice/{user_id}/{message_id}{ext}"
+    return _upload_key_get_url(key, data, content_type)

@@ -1,11 +1,18 @@
 import os
+import traceback
 import uvicorn
 
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
+from .middleware.access_audit import AccessAuditMiddleware
 from .routers.health import router as health_router
 from .routers.pages import router as pages_router
 from .routers.line_callback import router as line_router
@@ -14,10 +21,11 @@ from .routers.admin_api import router as admin_api_router
 from .routers.auth_api import router as auth_api_router
 from .routers.admin_history_detail import router as admin_history_router
 from .routers.dev_dashboard import router as dev_dashboard_router
-from . import line_handlers 
-from app.routers import auth_api
+from .routers.activity_api import router as activity_api_router
+from .routers.admin_logs import router as admin_logs_router
+from . import line_handlers
 from .routers import wind_api
-
+from .services.audit_log import insert_audit
 
 
 app = FastAPI()
@@ -31,6 +39,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(AccessAuditMiddleware)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
+    if isinstance(exc, RequestValidationError):
+        return await request_validation_exception_handler(request, exc)
+    tb = traceback.format_exc()
+    try:
+        insert_audit(
+            "system_error",
+            {
+                "path": request.url.path[:1024],
+                "method": request.method,
+                "error_type": type(exc).__name__,
+                "message": str(exc)[:2000],
+                "traceback": tb[-8000:],
+            },
+        )
+    except Exception:
+        pass
+    return JSONResponse({"detail": "Internal server error"}, status_code=500)
 
 
 if os.path.isdir("static"):
@@ -46,6 +78,8 @@ app.include_router(admin_api_router, prefix="/api")
 app.include_router(auth_api_router, prefix="/api")
 app.include_router(admin_history_router, prefix="/api")
 app.include_router(dev_dashboard_router, prefix="/api")
+app.include_router(activity_api_router, prefix="/api")
+app.include_router(admin_logs_router, prefix="/api")
 app.include_router(wind_api.router)
 
 
