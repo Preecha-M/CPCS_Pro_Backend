@@ -8,12 +8,7 @@ from starlette.requests import Request
 
 from ..core.auth import COOKIE_NAME
 from ..services.audit_log import insert_audit
-
-
-def _client_ip(request: Request) -> Optional[str]:
-    if request.client:
-        return request.client.host
-    return None
+from ..services.request_meta import extract_request_device_meta
 
 
 def _username_hint(request: Request) -> Optional[str]:
@@ -69,8 +64,8 @@ class AccessAuditMiddleware(BaseHTTPMiddleware):
             try:
                 path = request.url.path
                 query = request.url.query or ""
-                ua = (request.headers.get("user-agent") or "")[:500]
-                ip = _client_ip(request)
+                device_meta = extract_request_device_meta(request)
+                ua = (device_meta.get("user_agent") or "")[:500]
                 duration_ms = round((time.perf_counter() - start) * 1000, 2)
                 status = getattr(response, "status_code", 0) if response is not None else 0
 
@@ -82,11 +77,10 @@ class AccessAuditMiddleware(BaseHTTPMiddleware):
                             "method": request.method,
                             "path": path[:1024],
                             "query": query[:2048],
-                            "ip": ip,
-                            "user_agent": ua,
                             "flags": flags,
                             "status_code": status,
                             "username_hint": _username_hint(request),
+                            "device": device_meta,
                         },
                     )
 
@@ -97,12 +91,11 @@ class AccessAuditMiddleware(BaseHTTPMiddleware):
                             "method": request.method,
                             "path": path[:1024],
                             "query": query[:2048],
-                            "ip": ip,
-                            "user_agent": ua,
                             "status_code": status,
                             "duration_ms": duration_ms,
                             "username_hint": _username_hint(request),
                             "security_flags": flags,
+                            "device": device_meta,
                         },
                     )
             except Exception:

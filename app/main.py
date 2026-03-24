@@ -26,6 +26,7 @@ from .routers.admin_logs import router as admin_logs_router
 from . import line_handlers
 from .routers import wind_api
 from .services.audit_log import insert_audit
+from .services.request_meta import extract_request_device_meta
 
 
 app = FastAPI()
@@ -58,6 +59,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
                 "error_type": type(exc).__name__,
                 "message": str(exc)[:2000],
                 "traceback": tb[-8000:],
+                "device": extract_request_device_meta(request),
             },
         )
     except Exception:

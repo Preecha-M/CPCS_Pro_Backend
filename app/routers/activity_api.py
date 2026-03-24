@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from ..services.audit_log import insert_audit
+from ..services.request_meta import extract_request_device_meta
 
 router = APIRouter()
 
@@ -12,13 +13,12 @@ class PageViewBody(BaseModel):
 
 @router.post("/activity/page-view")
 async def log_page_view(request: Request, body: PageViewBody):
+    device_meta = extract_request_device_meta(request)
     insert_audit(
         "page_view",
         {
             "path": body.path[:512],
-            "referer": (request.headers.get("referer") or "")[:512],
-            "ip": request.client.host if request.client else None,
-            "user_agent": (request.headers.get("user-agent") or "")[:400],
+            "device": device_meta,
         },
     )
     return {"ok": True}
