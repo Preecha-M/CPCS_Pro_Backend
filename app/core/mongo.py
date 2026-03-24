@@ -2,7 +2,13 @@ import certifi
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from . import config
 
-mongo_client = MongoClient(config.MONGODB_URI, tlsCAFile=certifi.where())
+_uri = (config.MONGODB_URI or "").lower()
+_use_tls = _uri.startswith("mongodb+srv://") or "tls=true" in _uri or "ssl=true" in _uri
+
+mongo_client = MongoClient(
+    config.MONGODB_URI,
+    **({"tlsCAFile": certifi.where()} if _use_tls else {}),
+)
 db = mongo_client[config.MONGODB_DB]
 
 # Collections

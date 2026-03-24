@@ -4,7 +4,7 @@ import tempfile
 from linebot.models import MessageEvent, ImageMessage, TextSendMessage
 
 from ..core.line import line_bot_api, handler
-from ..core.gradio_space import gr_client, handle_file
+from ..core.gradio_space import get_gradio_client, handle_file
 from ..core import config
 from ..services.supabase_upload import (
     supabase_upload_bytes_and_get_url,
@@ -41,6 +41,7 @@ def handle_image(event):
         tmp_pred_path = tmp_pred.name
 
     try:
+        gr_client = get_gradio_client()
         # Space รับ 2 input: image + clip_threshold
         result = gr_client.predict(
             handle_file(tmp_pred_path),
