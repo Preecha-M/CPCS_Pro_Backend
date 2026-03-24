@@ -14,6 +14,21 @@ from ..services.predictions import save_direct_to_userdata
 from ..services.audit_log import insert_audit
 from ..state import user_pending_location_request
 
+# Space/Gradio อาจคืนข้อความคนละรูปแบบ — ต้องครอบคลุมทุกข้อความที่แปลว่า "ไม่ใช่ใบข้าว"
+_RICE_REJECTION_MARKERS = (
+    "ไม่ใช่รูปใบข้าว",
+    "ไม่ใช่ใบข้าว",
+    "นี่ไม่ใช่ใบข้าว",
+    "ไม่ใช่ภาพใบข้าว",
+)
+
+
+def _is_non_rice_leaf_rejection(result) -> bool:
+    if not isinstance(result, str):
+        return False
+    return any(m in result for m in _RICE_REJECTION_MARKERS)
+
+
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image(event):
     user_id = event.source.user_id
@@ -55,8 +70,8 @@ def handle_image(event):
         except Exception:
             pass
 
-    # ✅ ให้ Space เป็นคน gate: ถ้าไม่ใช่ใบข้าว -> ตีกลับและไม่บันทึก/ไม่ขอพิกัด
-    if isinstance(result, str) and "ไม่ใช่รูปใบข้าว" in result:
+    # ✅ ให้ Space เป็นคน gate: ถ้าไม่ใช่ใบข้าว -> ตีกลับและไม่บันทึก prediction / ไม่ขอพิกัด
+    if _is_non_rice_leaf_rejection(result):
         image_url = None
         upload_error = None
         try:
